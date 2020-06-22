@@ -36,7 +36,8 @@ class LogFailureLogin
      */
     public function handle(Login $event)
     {
-        $user = $event->user;
+        // $user = $event->user;
+        $user = is_null($event->user) ? null : $event->user;
         $ip = $this->request->ip();
         $userAgent = $this->request->userAgent();
         $known = $user->authentications()->whereIpAddress($ip)->whereUserAgent($userAgent)->first();
