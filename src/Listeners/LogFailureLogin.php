@@ -4,7 +4,7 @@ namespace Yadahan\AuthenticationLog\Listeners;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
-use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Failed;
 use Yadahan\AuthenticationLog\AuthenticationLog;
 use Yadahan\AuthenticationLog\Notifications\NewDevice;
 
@@ -34,21 +34,36 @@ class LogFailureLogin
      * @param  Login  $event
      * @return void
      */
-    public function handle(Login $event)
+    public function handle(Failed $event)
     {
-        // $user = $event->user;
+        $guardModel = \Auth::guard($event->guard)->getProvider()->getModel();
         $user = is_null($event->user) ? null : $event->user;
         $ip = $this->request->ip();
         $userAgent = $this->request->userAgent();
-        $known = $user->authentications()->whereIpAddress($ip)->whereUserAgent($userAgent)->first();
+        $attempt_log = json_encode($event->credentials);
+        $known = ($user)
+        ? $user->authentications()->whereIpAddress($ip)->whereUserAgent($userAgent)->first()
+        : false;
 
         $authenticationLog = new AuthenticationLog([
             'ip_address' => $ip,
             'user_agent' => $userAgent,
+            'attempt_log' => $attempt_log,
             'login_at' => Carbon::now(),
         ]);
 
-        $user->authentications()->save($authenticationLog);
+        if ($user) {
+            $user->authentications()->save($authenticationLog);
+        } else {
+            AuthenticationLog::record(
+                $guardModel,
+                0,
+                $attempt_log,
+                $ip,
+                $userAgent,
+                Carbon::now()
+            );
+        }
 
         if (! $known && config('authentication-log.notify')) {
             $user->notify(new NewDevice($authenticationLog));

@@ -25,7 +25,12 @@ class AuthenticationLog extends Model
      *
      * @var array
      */
-    protected $guarded = ['authenticatable_id', 'authenticatable_type'];
+    // protected $guarded = ['authenticatable_id', 'authenticatable_type'];
+
+    protected $fillable = [
+        'authenticatable_type', 'authenticatable_id', 'ip_address',
+        'user_agent', 'attempt_log', 'login_at', 'logout_at',
+    ];
 
     /**
      * The attributes that should be cast to native types.
@@ -43,5 +48,17 @@ class AuthenticationLog extends Model
     public function authenticatable()
     {
         return $this->morphTo();
+    }
+
+    public static function record($authenticatable_type, $authenticatable_id, $attempt_log, $ip, $user_agent, $time)
+    {
+        return static::create([
+            'authenticatable_type' => $authenticatable_type,
+            'authenticatable_id' => $authenticatable_id,
+            'attempt_log' => $attempt_log,
+            'ip_address' => $ip,
+            'user_agent' => $user_agent,
+            'login_at' => $time
+        ]);
     }
 }
